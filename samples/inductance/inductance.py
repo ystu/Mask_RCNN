@@ -52,8 +52,8 @@ class ShapesConfig(Config):
 
     # Use small images for faster training. Set the limits of the small side
     # the large side, and that determines the image shape.
-    IMAGE_MIN_DIM = 256
-    IMAGE_MAX_DIM = 256
+    IMAGE_MIN_DIM = 64
+    IMAGE_MAX_DIM = 64
 
     # Use smaller anchors because our image and objects are small
     RPN_ANCHOR_SCALES = (8 * 6, 16 * 6, 32 * 6, 64 * 6, 128 * 6)  # anchor side in pixels
@@ -79,7 +79,7 @@ class DrugDataset(utils.Dataset):
     def from_yaml_get_class(self, image_id):
         info = self.image_info[image_id]
         with open(info['yaml_path']) as f:
-            temp = yaml.load(f.read())
+            temp = yaml.load(f.read(),  Loader=yaml.FullLoader)
             labels = temp['label_names']
             del labels[0]
         return labels
@@ -117,6 +117,7 @@ class DrugDataset(utils.Dataset):
 
 
             filestr = imglist[i].split(".")[0]
+            filestr += "_json"
             # print(imglist[i],"-->",cv_img.shape[1],"--->",cv_img.shape[0])
             # print("id-->", i, " imglist[", i, "]-->", imglist[i],"filestr-->",filestr)
             # filestr = filestr.split("_")[1]
@@ -172,7 +173,7 @@ def train_model():
 
 
     dataset_root_path = r"D:\data\inductance\train"
-    img_floder = os.path.join(dataset_root_path, "origin")
+    img_floder = os.path.join(dataset_root_path, "pic")
     mask_floder = os.path.join(dataset_root_path, "cv2_mask")
     # yaml_floder = dataset_root_path
     imglist = os.listdir(img_floder)
@@ -206,11 +207,18 @@ def train_model():
         # See README for instructions to download the COCO weights
         model.load_weights(COCO_MODEL_PATH, by_name=True,
                            exclude=["mrcnn_class_logits", "mrcnn_bbox_fc",
-                                    "mrcnn_bbox", "mrcnn_mask"])
+                                    "mrcnn_bbox", "mrcnn_mask", "conv1"]) # modified by Sam
     elif init_with == "last":
         # Load the last models you trained and continue training
         checkpoint_file = model.find_last()
         model.load_weights(checkpoint_file, by_name=True)
+
+
+    # add by sam
+    model.train(dataset_train, dataset_val,
+                learning_rate=config.LEARNING_RATE,
+                epochs=10,
+                layers='conv1')
 
     # Train the head branches
     # Passing layers="heads" freezes all layers except the head
@@ -221,6 +229,8 @@ def train_model():
                 epochs=10,
                 layers='heads')
 
+
+
     # Fine tune all layers
     # Passing layers="all" trains all layers. You can also
     # pass a regular expression to select which layers to
@@ -229,6 +239,8 @@ def train_model():
                 learning_rate=config.LEARNING_RATE / 10,
                 epochs=30,
                 layers="all")
+
+
 
 
 class TongueConfig(ShapesConfig):
@@ -251,13 +263,13 @@ def predict():
     print("Loading weights from ", model_path)
     model.load_weights(model_path, by_name=True)
 
-    class_names = ['BG', 'crack']
+    class_names = ['BG', 'crack'] # background
 
     # Load a random image from the images folder
     file_names = r'D:\data\inductance\origin\7_143_173947_COORD_X00216_Y00594_W00064_H00064.png'  # next(os.walk(IMAGE_DIR))[2]
     # image = skimage.io.imread(os.path.join(IMAGE_DIR, random.choice(file_names)))
     image = skimage.io.imread(file_names)
-
+    print(np.array(image).shape)
     # Run detection
     results = model.detect([image], verbose=1)
 
@@ -267,6 +279,6 @@ def predict():
 
 
 if __name__ == "__main__":
-    print("hello")
+
     train_model()
     # predict()

@@ -360,6 +360,7 @@ class Dataset(object):
         # If grayscale. Convert to RGB for consistency.
         if image.ndim != 3:
             image = skimage.color.gray2rgb(image)
+            print("load_image(): image.shape: " + str(image.shape))
         # If has an alpha channel, remove it for consistency
         if image.shape[-1] == 4:
             image = image[..., :3]
@@ -456,6 +457,13 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
         left_pad = (max_dim - w) // 2
         right_pad = max_dim - w - left_pad
         padding = [(top_pad, bottom_pad), (left_pad, right_pad), (0, 0)]
+        # padding = [(top_pad, bottom_pad), (left_pad, right_pad)]
+        print("image shape = " + str(image.shape))
+        print("padding shape = " + str(np.array(padding).shape))
+        print("top_pad = " + str(top_pad))
+        print("bottom_pad = " + str(bottom_pad))
+        print("left_pad = " + str(left_pad))
+        print("right_pad = " + str(right_pad))
         image = np.pad(image, padding, mode='constant', constant_values=0)
         window = (top_pad, left_pad, h + top_pad, w + left_pad)
     elif mode == "pad64":
